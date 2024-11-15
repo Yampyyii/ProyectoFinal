@@ -1,6 +1,6 @@
 <template>
   <q-page 
-   v-touch-pan.vertical.prevent.mouse="handlePan"
+  v-touch-pan.vertical.prevent.mouse="handlePan"
   class="flex flex-center text-black">
     <div class="row">
       <q-input
@@ -85,10 +85,11 @@ const resetCounter = () =>{
   data.counter= 0
 }
 
-/* touch pan*/
-const handlePan = e =>{
-  if(e.delta.y < 0) increaseCounter()
-  else decreaseCounter()
+ 
+const handlePan = e => {
+    console.log(e.delta.y)
+    if (e.delta.y < 0 ) increaseCounter()
+    else decreaseCounter()
 }
 
 </script>
