@@ -3,6 +3,18 @@
     v-touch-pan.vertical.prevent.mouse="handlePan"
     class="flex flex-center text-black"
   >
+    <!-- Apartado para mostrar los usos del contador y el nombre -->
+    <div class="absolute-top-right text-red text-h6 q-pa-md bg-white shadow-2 rounded" v-if="data.usageCount > 0">
+      <div>{{ data.name }} - Usos: {{ data.usageCount }}</div>
+      <q-btn
+        @click="clearUsage"
+        flat
+        icon="close"
+        color="red"
+        size="sm"
+      />
+    </div>
+
     <div class="row">
       <q-input
         v-model="data.name"
@@ -53,7 +65,8 @@ import { LocalStorage } from 'quasar';
 // Data reactiva
 const data = reactive({
   counter: 0,
-  name: ''
+  name: '',
+  usageCount: 0
 });
 
 // Recuperar datos almacenados
@@ -72,14 +85,19 @@ watch(
 // Métodos del contador
 const increaseCounter = () => {
   data.counter++;
+  data.usageCount++;
 };
 
 const decreaseCounter = () => {
-  if (data.counter > 0) data.counter--;
+  if (data.counter > 0) {
+    data.counter--;
+    data.usageCount++;
+  }
 };
 
 const resetCounter = () => {
   data.counter = 0;
+  data.usageCount++;
 };
 
 const handlePan = (e) => {
@@ -89,11 +107,21 @@ const handlePan = (e) => {
     decreaseCounter();
   }
 };
+
+const clearUsage = () => {
+  data.usageCount = 0;
+};
 </script>
 
 <style scoped>
 .q-page {
   max-width: 700px;
   margin: 0 auto;
+}
+
+.absolute-top-right {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 </style>
