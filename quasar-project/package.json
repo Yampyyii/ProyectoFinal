@@ -11,6 +11,8 @@
     "build": "quasar build"
   },
   "dependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
     "@quasar/extras": "^1.16.14",
     "quasar": "^2.16.0",
     "vue": "^3.4.18",
