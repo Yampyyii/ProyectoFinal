@@ -3,30 +3,34 @@
     v-touch-pan.vertical.prevent.mouse="handlePan"
     class="flex flex-center text-black"
   >
-    <!-- Apartado para mostrar los usos del contador, el nombre y los últimos valores -->
-    <div class="absolute-top-right text-red text-h6 q-pa-md shadow-2 rounded" v-if="data.usageCount > 0">
-      <div>{{ data.name }} - Usos: {{ data.usageCount }}</div>
-      <div>Últimos valores: {{ data.lastValues.join(', ') }}</div>
+    <!-- Contador del usuario actual -->
+    <div class="absolute-top-left text-red text-h6 q-pa-md shadow-2 rounded">
+      <div>{{ user.name || 'Usuario' }} - Usos: {{ user.usageCount }}</div>
+      <div>Últimos valores: {{ user.lastValues.join(', ') }}</div>
       <q-btn
         @click="clearUsage"
         flat
         icon="close"
         color="red"
         size="sm"
+        label="Reset"
       />
     </div>
 
     <!-- Mensajes especiales -->
-    <q-banner v-if="showCongrats" class="q-mb-md text-center text-white bg-teal">
-      ¡Felicidades! Aumentaste 10 puntos.
-    </q-banner>
-    <q-banner v-if="showMaxCongrats" class="q-mb-md text-center text-white bg-orange">
-      ¡Eres lo máximo! Gracias por usar el contador.
-    </q-banner>
+    <div class="absolute-top-left q-ml-md q-mt-xl">
+      <q-banner v-if="showCongrats" class="q-mb-md text-center text-white bg-teal">
+        ¡Felicidades! Aumentaste 10 puntos.
+      </q-banner>
+      <q-banner v-if="showMaxCongrats" class="q-mb-md text-center text-white bg-orange">
+        ¡Eres lo máximo! Gracias por usar el contador.
+      </q-banner>
+    </div>
 
+    <!-- Panel de control -->
     <div class="row">
       <q-input
-        v-model="data.name"
+        v-model="user.name"
         input-class="text-center text-h5 text-red"
         color="teal"
         placeholder="Counter"
@@ -44,7 +48,7 @@
         />
       </div>
       <div class="col text-center text-h2">
-        {{ data.counter }}
+        {{ user.counter }}
       </div>
       <div class="col text-center">
         <q-btn
@@ -62,6 +66,28 @@
         icon="restart_alt" 
         size="xl"
         round 
+        label="Reset Counter"
+      />
+    </div>
+
+    <!-- Historial de uso -->
+    <div class="absolute-bottom-left text-black q-pa-md shadow-2 rounded" :style="{ backgroundColor: 'transparent' }">
+      <div class="text-h6">Historial</div>
+      <div v-for="(record, index) in history" :key="index" class="q-mb-sm">
+        <div><strong>{{ record.name || 'Sin nombre' }}</strong></div>
+        <div>Hasta: {{ record.counter }}</div>
+        <div>Mensaje: {{ record.message || 'N/A' }}</div>
+      </div>
+    </div>
+
+    <!-- Botón general de reset -->
+    <div class="absolute-bottom-right q-pa-md">
+      <q-btn
+        @click="resetAll"
+        icon="delete"
+        color="red"
+        label="Reset All"
+        flat
       />
     </div>
   </q-page>
@@ -71,85 +97,100 @@
 import { reactive, ref, watch } from 'vue';
 import { LocalStorage } from 'quasar';
 
-// Data reactiva
-const data = reactive({
-  counter: 0,
+const user = reactive({
   name: '',
+  counter: 0,
   usageCount: 0,
-  lastValues: []
+  lastValues: [],
+  messages: [],
 });
 
-// Mensajes especiales
+const history = reactive([]);
+
 const showCongrats = ref(false);
 const showMaxCongrats = ref(false);
 
-// Recuperar datos almacenados
-const savedData = LocalStorage.getItem('data');
-if (savedData) Object.assign(data, savedData);
-
-// Vigilar cambios y guardar datos
+// Guardar datos en almacenamiento local
 watch(
-  () => data,
-  (value) => {
-    LocalStorage.set('data', value);
-  },
+  () => ({ user, history }),
+  (value) => LocalStorage.set('data', value),
   { deep: true }
 );
 
-// Métodos del contador
+const savedData = LocalStorage.getItem('data');
+if (savedData) {
+  Object.assign(user, savedData.user);
+  Object.assign(history, savedData.history);
+}
+
 const increaseCounter = () => {
-  data.counter++;
-  data.usageCount++;
-  addLastValue(data.counter);
+  user.counter++;
+  user.usageCount++;
+  addLastValue(user.counter);
   checkSpecialMessages();
 };
 
 const decreaseCounter = () => {
-  if (data.counter > 0) {
-    data.counter--;
-    data.usageCount++;
-    addLastValue(data.counter);
+  if (user.counter > 0) {
+    user.counter--;
+    user.usageCount++;
+    addLastValue(user.counter);
     checkSpecialMessages();
   }
 };
 
 const resetCounter = () => {
-  addLastValue(data.counter);
-  data.counter = 0;
-  data.usageCount++;
+  addLastValue(user.counter);
+  addToHistory(user.counter, user.messages.at(-1));
+  user.counter = 0;
+  user.usageCount++;
 };
 
-// Manejar la lista de últimos valores
 const addLastValue = (value) => {
-  data.lastValues.unshift(value); // Agregar al inicio
-  if (data.lastValues.length > 5) {
-    data.lastValues.pop(); // Eliminar el valor más antiguo
-  }
+  user.lastValues.unshift(value);
+  if (user.lastValues.length > 5) user.lastValues.pop();
 };
 
-// Manejar mensajes especiales
+const addToHistory = (counter, message) => {
+  history.unshift({
+    name: user.name,
+    counter,
+    message,
+  });
+  if (history.length > 5) history.pop();
+};
+
 const checkSpecialMessages = () => {
-  if (data.counter > 0 && data.counter % 10 === 0) {
+  if (user.counter % 10 === 0 && user.counter > 0) {
     showCongrats.value = true;
-    setTimeout(() => (showCongrats.value = false), 3000); // Ocultar después de 3 segundos
+    user.messages.push('¡Felicidades! Aumentaste 10 puntos.');
+    setTimeout(() => (showCongrats.value = false), 3000);
   }
-  if (data.counter === 100) {
+  if (user.counter === 100) {
     showMaxCongrats.value = true;
-    setTimeout(() => (showMaxCongrats.value = false), 5000); // Ocultar después de 5 segundos
-  }
-};
-
-const handlePan = (e) => {
-  if (e.delta.y < 0) {
-    increaseCounter();
-  } else {
-    decreaseCounter();
+    user.messages.push('¡Eres lo máximo! Gracias por usar el contador.');
+    setTimeout(() => (showMaxCongrats.value = false), 5000);
   }
 };
 
 const clearUsage = () => {
-  data.usageCount = 0;
-  data.lastValues = [];
+  user.usageCount = 0;
+  user.lastValues = [];
+  user.messages = [];
+};
+
+const resetAll = () => {
+  user.name = '';
+  user.counter = 0;
+  user.usageCount = 0;
+  user.lastValues = [];
+  user.messages = [];
+  history.splice(0, history.length);
+};
+
+const handlePan = (e) => {
+  if (e.delta.y < 0) increaseCounter();
+  else decreaseCounter();
 };
 </script>
 
@@ -159,13 +200,24 @@ const clearUsage = () => {
   margin: 0 auto;
 }
 
-.absolute-top-right {
+.absolute-top-left {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
 }
 
-.q-banner {
-  width: 100%;
+.absolute-bottom-left {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 300px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.absolute-bottom-right {
+  position: absolute;
+  bottom: 0;
+  right: 0;
 }
 </style>
